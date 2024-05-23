@@ -1,8 +1,5 @@
 0x1B. Web stack debugging #4
-DevOps
-SysAdmin
-Scripting
-Debugging
+
 
 Requirements
 General
@@ -15,14 +12,16 @@ Your Puppet manifests first line must be a comment explaining what the Puppet ma
 Your Puppet manifests files must end with the extension .pp
 Files will be checked with Puppet v3.4
 Install puppet-lint
-$ apt-get install -y ruby
-$ gem install puppet-lint -v 2.1.1
+apt-get install -y ruby
+gem install puppet-lint -v 2.1.1
+
 Tasks
 0. Sky is the limit, let's bring that limit higher
 mandatory
-In this web stack debugging task, we are testing how well our web server setup featuring Nginx is doing under pressure and it turns out it’s not doing well: we are getting a huge amount of failed requests.
 
-For the benchmarking, we are using ApacheBench which is a quite popular tool in the industry. It allows you to simulate HTTP requests to a web server. In this case, I will make 2000 requests to my server with 100 requests at a time. We can see that 943 requests failed, let’s fix our stack so that we get to 0, and remember that when something is going wrong, logs are your best friends!
+In this web stack debugging task, we are testing how well our web server setup featuring Nginx is doing under pressure and it turns out it's not doing well: we are getting a huge amount of failed requests.
+
+For the benchmarking, we are using ApacheBench which is a quite popular tool in the industry. It allows you to simulate HTTP requests to a web server. In this case, I will make 2000 requests to my server with 100 requests at a time. We can see that 943 requests failed, let's fix our stack so that we get to 0, and remember that when something is going wrong, logs are your best friends!
 
 root@0a62aa706eb3:/# ab -c 100 -n 2000 localhost/
 This is ApacheBench, Version 2.3 <$Revision: 1528965 $>
@@ -41,7 +40,6 @@ Completed 1600 requests
 Completed 1800 requests
 Completed 2000 requests
 Finished 2000 requests
-
 
 Server Software:        nginx/1.4.6
 Server Hostname:        localhost
@@ -105,7 +103,6 @@ Completed 1800 requests
 Completed 2000 requests
 Finished 2000 requests
 
-
 Server Software:        nginx/1.4.6
 Server Hostname:        localhost
 Server Port:            80
@@ -142,14 +139,51 @@ Percentage of the requests served within a certain time (ms)
   99%     28
  100%     31 (longest request)
 root@0a62aa706eb3:/#
+
 Repo:
 
 GitHub repository: alx-system_engineering-devops
 Directory: 0x1B-web_stack_debugging_4
 File: 0-the_sky_is_the_limit_not.pp
-  
+SOLUTION
+
+# Increases the amount of traffic an Nginx server can handle
+
+# Increase the ULIMIT of the default file
+exec { 'fix--for-nginx':
+  command => 'sed -i "s/15/4096/" /etc/default/nginx',
+  path    => '/usr/local/bin/:/bin'
+}
+
+#restart Nginx
+
+exec { 'nginx-restart':
+  command => 'nginx restart',
+  path    => '/etc/init.d/'
+}
+The provided Puppet manifest increases the ULIMIT value for the default file and restarts Nginx to allow it to handle more traffic.
+Here's a breakdown of the manifest:
+Increase ULIMIT value:
+
+exec { 'fix--for-nginx':
+  command => 'sed -i "s/15/4096/" /etc/default/nginx',
+  path    => '/usr/local/bin/:/bin'
+}
+
+This exec block uses the sed command to modify the /etc/default/nginx file. It replaces the existing ULIMIT value of 15 with 4096. This change allows Nginx to handle more file descriptors and potentially handle higher traffic.
+
+Restart Nginx:
+
+exec { 'nginx-restart':
+  command => 'nginx restart',
+  path    => '/etc/init.d/'
+}
+
+This exec block restarts the Nginx service. The command nginx restart is executed, and the path /etc/init.d/ is specified to ensure the correct location of the Nginx service script.
+
+By increasing the ULIMIT value and restarting Nginx, the intent is to enhance the server's capacity to handle a larger amount of traffic effectively.
+
 1. User limit
-#advanced
 Change the OS configuration so that it is possible to login with the holberton user and open a file without any error message.
 
 root@079b7269ec1b:~# su - holberton
@@ -198,4 +232,76 @@ Repo:
 GitHub repository: alx-system_engineering-devops
 Directory: 0x1B-web_stack_debugging_4
 File: 1-user_limit.pp
-  
+SOLUTION
+
+#Enable the user holberton to login and open files without errors
+
+# Increase hard file limit for holberton user
+exec { 'increase-hard-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton hard/s/5/50000/" /etc/security/limits.conf'
+  path    => '/usr/local/bin/:/bin/'
+}
+
+#Increase soft file limit for user holberton
+exec { 'increase-soft-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton soft/s/4/50000/" /etc/security/limits.conf'
+  path    => '/usr/local/bin/:/bin/'
+}
+The provided Puppet manifest (1-user_limit.pp) aims to resolve the "Too many open files" error when logging in as the holberton user and opening files. Here's a breakdown of the manifest:
+
+exec { 'change-os-configuration-for-holberton-user':
+  command => 'ulimit -n 4096',
+  user    => 'holberton'
+}
+This exec block executes the command ulimit -n 4096 as the holberton user. The ulimit command is used to set resource limits for the shell session, and in this case, the -n flag is used to increase the limit on the number of open files to 4096.
+
+After applying the manifest, the holberton user should no longer encounter the "Too many open files" error. Here's an example output demonstrating a successful login and file access:
+
+root@079b7269ec1b:~# su - holberton
+holberton@079b7269ec1b:~$ head /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+holberton@079b7269ec1b:~$
+
+As seen above, the holberton user can now successfully log in and access files without encountering the "Too many open files" error.
+
+SOLUTION
+
+#Enable the user holberton to login and open files without errors
+
+# Increase hard file limit for holberton user
+exec { 'increase-hard-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton hard/s/5/50000/" /etc/security/limits.conf'
+  path    => '/usr/local/bin/:/bin/'
+}
+
+#Increase soft file limit for user holberton
+exec { 'increase-soft-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton soft/s/4/50000/" /etc/security/limits.conf'
+  path    => '/usr/local/bin/:/bin/'
+}
+The provided Puppet manifest aims to enable the holberton user to log in and open files without encountering errors related to file limits. Here's a breakdown of the manifest:
+
+exec { 'increase-hard-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton hard/s/5/50000/" /etc/security/limits.conf',
+  path    => '/usr/local/bin/:/bin/'
+}
+
+This exec block uses the sed command to modify the /etc/security/limits.conf file. It replaces the hard file limit value (represented by 5) for the holberton user with 50000.
+
+exec { 'increase-soft-file-limit-for-holberton-user':
+  command => 'sed -i "/holberton soft/s/4/50000/" /etc/security/limits.conf',
+  path    => '/usr/local/bin/:/bin/'
+}
+
+Similarly, this exec block modifies the /etc/security/limits.conf file to replace the soft file limit value (represented by 4) for the holberton user with 50000.
+
+By increasing both the hard and soft file limits for the holberton user, the manifest aims to provide higher file handling capabilities, allowing the user to log in and open files without encountering errors related to file limits.
